@@ -302,6 +302,7 @@ TOKENIZER_FILES = [
 # FIXME: Copy RWKV tokenizer file
 
 CONV_TEMPLATES = {
+    "lfm2",
     "llama-4",
     "llama-3",
     "llama-3_1",

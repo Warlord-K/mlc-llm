@@ -42,6 +42,7 @@ class Conversation(BaseModel):
     system_template: str = MessagePlaceholders.SYSTEM.value
     # The content of the system prompt (without the template format).
     system_message: str = ""
+    skip_empty_system: bool = False
     # The system token ids to be prepended at the beginning of tokenized
     # generated prompt.
     system_prefix_token_ids: Optional[List[int]] = None  # noqa: UP006
@@ -133,6 +134,8 @@ class Conversation(BaseModel):
         system_msg = self.system_template.replace(
             MessagePlaceholders.SYSTEM.value, self.system_message
         )
+        if self.skip_empty_system and self.system_message == "":
+            system_msg = ""
 
         # - Get the message strings.
         message_list: List[Union[str, data.Data]] = []  # noqa: UP006

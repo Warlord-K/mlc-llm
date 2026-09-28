@@ -253,8 +253,10 @@ Result<std::vector<Data>> CreatePrompt(const Conversation& conv,
   // pending text records the text to be put into data
   // we lazily accumulate the pending text
   // to reduce amount of segments in the Data vector
+  const std::string& system_inputs =
+      has_custom_system ? custom_system_inputs : conv.system_message;
   std::string pending_text =
-      conv.GetSystemText(has_custom_system ? custom_system_inputs : conv.system_message);
+      conv.skip_empty_system && system_inputs.empty() ? "" : conv.GetSystemText(system_inputs);
 
   // Get the message strings
   std::vector<Data> message_list;
@@ -439,6 +441,13 @@ Result<Conversation> Conversation::FromJSON(const tvm::ffi::json::Object& json_o
     return TResult::Error(system_message_res.UnwrapErr());
   }
   conv.system_message = system_message_res.Unwrap();
+
+  Result<std::optional<bool>> skip_empty_system_res =
+      json::LookupOptionalWithResultReturn<bool>(json_obj, "skip_empty_system");
+  if (skip_empty_system_res.IsErr()) {
+    return TResult::Error(skip_empty_system_res.UnwrapErr());
+  }
+  conv.skip_empty_system = skip_empty_system_res.Unwrap().value_or(false);
 
   Result<std::optional<tvm::ffi::json::Array>> system_prefix_token_ids_arr_res =
       json::LookupOptionalWithResultReturn<tvm::ffi::json::Array>(json_obj,
