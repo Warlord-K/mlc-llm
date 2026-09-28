@@ -81,6 +81,8 @@ struct Conversation {
   // The content of the system prompt (without the template format).
   std::string system_message;
 
+  bool skip_empty_system = false;
+
   // The system token ids to be prepended at the beginning of tokenized
   // generated prompt.
   std::optional<std::vector<int>> system_prefix_token_ids = std::nullopt;
