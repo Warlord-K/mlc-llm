@@ -32,7 +32,7 @@ def huggingface(model_config: LFM2Config, quantization: Quantization) -> ExternM
                 ],
                 functools.partial(
                     lambda q, k, v, dtype: np.concatenate([q, k, v], axis=0).astype(dtype),
-                    dtype=parameter.dtype,
+                    dtype=str(parameter.dtype),
                 ),
             )
         else:
@@ -41,7 +41,7 @@ def huggingface(model_config: LFM2Config, quantization: Quantization) -> ExternM
             mapping.add_mapping(
                 name,
                 [f"model.layers.{layer_id}.conv.conv.weight"],
-                functools.partial(lambda x, dtype: x.astype(dtype), dtype=parameter.dtype),
+                functools.partial(lambda x, dtype: x.astype(dtype), dtype=str(parameter.dtype)),
             )
 
     for mlc_name, mlc_param in named_parameters.items():
@@ -51,6 +51,6 @@ def huggingface(model_config: LFM2Config, quantization: Quantization) -> ExternM
             mapping.add_mapping(
                 mlc_name,
                 [mlc_name],
-                functools.partial(lambda x, dtype: x.astype(dtype), dtype=mlc_param.dtype),
+                functools.partial(lambda x, dtype: x.astype(dtype), dtype=str(mlc_param.dtype)),
             )
     return mapping

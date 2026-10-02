@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "../metadata/model.h"
+#include "../support/load_bytes_from_file.h"
 #include "../support/progress_bar.h"
 
 namespace mlc {
@@ -274,7 +275,7 @@ Array<Optional<Tensor>> LoadMultiGPUPresharded(const std::string& model_path, Mo
   }
 
   Array<Optional<Tensor>> params;
-  const TensorCacheMetadata::FileRecord* current_file_;
+  const TensorCacheMetadata::FileRecord* current_file_ = nullptr;
   std::string current_file_stream_;
   params.reserve(model_metadata.params.size());
   DurationType time_loading(0);
@@ -300,8 +301,14 @@ Array<Optional<Tensor>> LoadMultiGPUPresharded(const std::string& model_path, Mo
     const TensorCacheMetadata::FileRecord* file_record = param_info.file;
 
     if (file_record != current_file_) {
+      // Only read the file into memory. FileRecord::Load would also upload every tensor in the
+      // file (including other workers' shards) to this device, just to be discarded.
       current_file_ = file_record;
-      file_record->Load(device, model_path, &current_file_stream_);
+      current_file_stream_ = LoadBytesFromFile(model_path + "/" + file_record->data_path);
+      TVM_FFI_ICHECK_EQ(current_file_stream_.size(), static_cast<size_t>(file_record->nbytes))
+          << "Encountered an corrupted parameter shard: " << file_record->data_path
+          << ". It means it is not downloaded completely or downloading is interrupted. "
+          << "Please try to download again.";
     }
 
     params.push_back(param_record->Load(device, &current_file_stream_));
