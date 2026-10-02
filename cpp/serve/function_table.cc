@@ -8,12 +8,16 @@
 
 #include <tvm/ffi/extra/module.h>
 #include <tvm/ffi/function.h>
+#include <tvm/runtime/device_api.h>
 #include <tvm/runtime/disco/session.h>
+#include <tvm/runtime/logging.h>
 #include <tvm/runtime/memory/memory_manager.h>
 #include <tvm/runtime/tensor.h>
 
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
+#include <iomanip>
 #include <string>
 #include <vector>
 
@@ -178,8 +182,13 @@ ObjectRef FunctionTable::LoadParams(const std::string& model_path, Device device
     }
     return params.value();
   } else {
+    auto load_start = std::chrono::steady_clock::now();
     static Function fload_cache = Function::GetGlobalRequired("vm.builtin.tensor_cache.load");
     fload_cache(model_path, static_cast<int32_t>(device.device_type), device.device_id);
+    LOG(INFO) << "Loaded parameters to " << tvm::runtime::DLDeviceType2Str(device.device_type)
+              << " in " << std::fixed << std::setprecision(3)
+              << std::chrono::duration<double>(std::chrono::steady_clock::now() - load_start).count()
+              << " s.";
     Array<Tensor> params;
     if (this->model_metadata_.params.empty()) {
       constexpr const char* name_loader = "vm.builtin.param_array_from_cache";
