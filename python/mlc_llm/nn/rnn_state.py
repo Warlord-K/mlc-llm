@@ -221,14 +221,17 @@ class RNNState(Object):
                     for s in T.grid(*shape):
                         with T.sblock("copy"):
                             vi, *vs = T.axis.remap("S" * (len(shape) + 1), [i, *s])
-                            seq_id: T.int32 = seq_slot_ids[vi]
-                            history_id: T.int32 = history_slot_ids[vi]
+                            # The indices are written inline: a `seq_id: T.int32 = ...` local
+                            # here is parsed as an undeclared buffer and fails the TIR
+                            # well-formedness check.
                             # The following line is equivalent to:
                             # `output[vi, *vs] = storage[seq_id, history_id, *vs]`
                             # However, unpacking operator in subscript requires Python 3.11 or newer
                             T.buffer_store(
                                 output,
-                                T.BufferLoad(storage, [seq_id, history_id, *vs]),
+                                T.BufferLoad(
+                                    storage, [seq_slot_ids[vi], history_slot_ids[vi], *vs]
+                                ),
                                 [vi, *vs],
                             )
 
@@ -319,17 +322,20 @@ class RNNState(Object):
                     for s in T.grid(*shape):
                         with T.sblock("copy"):
                             vi, *vs = T.axis.remap("S" * (len(shape) + 1), [i, *s])
-                            seq_id: T.int32 = seq_slot_ids[vi]
-                            history_id: T.int32 = (history_slot_ids[vi] + 1) % T.cast(
-                                max_history, "int32"
-                            )
+                            # The indices are written inline: a `seq_id: T.int32 = ...` local
+                            # here is parsed as an undeclared buffer and fails the TIR
+                            # well-formedness check.
                             # The following line is equivalent to:
                             # `storage[seq_id, history_id, *vs] = data[vi, *vs]`
                             # However, unpacking operator in subscript requires Python 3.11 or newer
                             T.buffer_store(
                                 storage,
                                 T.BufferLoad(data, [vi, *vs]),
-                                [seq_id, history_id, *vs],
+                                [
+                                    seq_slot_ids[vi],
+                                    (history_slot_ids[vi] + 1) % T.cast(max_history, "int32"),
+                                    *vs,
+                                ],
                             )
 
             return f
